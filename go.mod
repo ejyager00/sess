@@ -3,8 +3,8 @@ module github.com/ejyager00/sess
 go 1.23.3
 
 require (
+	github.com/goccy/go-yaml v1.14.3
 	github.com/spf13/cobra v1.8.1
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

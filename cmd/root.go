@@ -29,4 +29,5 @@ func Execute() {
 func init() {
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(installCmd)
+	rootCmd.AddCommand(captureCmd)
 }

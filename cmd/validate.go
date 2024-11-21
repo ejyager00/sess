@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/ejyager00/sess/models"
 	"github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
@@ -29,24 +30,29 @@ func parseYamlFile(filePath string) (*models.EnvironmentSchema, error) {
 	return &schema, nil
 }
 
+func versionSatisfiesConstraint(versionConstraint string, version string) (bool, error) {
+	constraints, err := semver.NewConstraint(versionConstraint)
+	if err != nil {
+		return false, fmt.Errorf("invalid version constraint: %w", err)
+	}
+
+	versionObj, err := semver.NewVersion(version)
+	if err != nil {
+		return false, fmt.Errorf("error parsing version: %v", err)
+	}
+
+	return constraints.Check(versionObj), nil
+}
+
 func checkVersion(version_check_command string, expected_version string) (bool, error) {
-	// Execute the version check command
 	output, err := exec.Command("sh", "-c", version_check_command).Output()
 	if err != nil {
 		return false, fmt.Errorf("error running version check command: %v", err)
 	}
 
-	// Convert output to string and trim whitespace
 	actual_version := strings.TrimSpace(string(output))
 
-	// If expected version ends in .x, only compare major version
-	if strings.HasSuffix(expected_version, ".x") {
-		major_version := strings.TrimSuffix(expected_version, ".x")
-		return strings.HasPrefix(actual_version, major_version), nil
-	}
-
-	// Otherwise do exact match
-	return actual_version == expected_version, nil
+	return versionSatisfiesConstraint(expected_version, actual_version)
 }
 
 var validateCmd = &cobra.Command{

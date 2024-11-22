@@ -37,7 +37,7 @@ func versionSatisfiesConstraint(versionConstraint string, version string) (bool,
 		return false, fmt.Errorf("invalid version constraint: %w", err)
 	}
 
-	re := regexp.MustCompile(`(\d+\.\d+\.\d+)`)
+	re := regexp.MustCompile(`(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`)
 	match := re.FindString(version)
 	if match == "" {
 		return false, fmt.Errorf("no semantic version found in string: %s", version)

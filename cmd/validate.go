@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -36,7 +37,13 @@ func versionSatisfiesConstraint(versionConstraint string, version string) (bool,
 		return false, fmt.Errorf("invalid version constraint: %w", err)
 	}
 
-	versionObj, err := semver.NewVersion(version)
+	re := regexp.MustCompile(`(\d+\.\d+\.\d+)`)
+	match := re.FindString(version)
+	if match == "" {
+		return false, fmt.Errorf("no semantic version found in string: %s", version)
+	}
+
+	versionObj, err := semver.NewVersion(match)
 	if err != nil {
 		return false, fmt.Errorf("error parsing version: %v", err)
 	}

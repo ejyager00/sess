@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ejyager00/sess/internal/io"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +17,7 @@ var installCmd = &cobra.Command{
 	Long:  `Install the tools and extensions specified in the configuration file.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		schema, err := parseYamlFile(args[0])
+		schema, err := io.ParseYamlFile(args[0])
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

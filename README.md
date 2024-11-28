@@ -2,6 +2,10 @@
 
 SESS is a command line tool for synchronizing development environments.
 
+# Building
+
+`make build` will build the project and put the binary in `target/sess`.
+
 ## Usage
 
 ```

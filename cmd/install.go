@@ -23,8 +23,12 @@ var installCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		for _, tool := range schema.Tools {
-			fmt.Println(tool.Name)
+		for key, value := range schema.EnvVariables {
+			err := os.Setenv(key, value)
+			if err != nil {
+				fmt.Printf("Error setting environment variable %s: %v\n", key, err)
+				os.Exit(1)
+			}
 		}
 	},
 }

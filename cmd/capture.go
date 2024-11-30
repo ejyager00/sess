@@ -70,8 +70,8 @@ func promptForDotFileSelection(dotFiles []string) ([]string, error) {
 	return selectedFiles, nil
 }
 
-// getDotFilesSelection combines listing and selection of dot files
-func getDotFilesSelection(dir string) ([]string, error) {
+// captureDotFiles handles the dotfile capture workflow
+func captureDotFiles(dir string) ([]string, error) {
 	dotFiles, err := listDotFiles(dir)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,39 @@ func getDotFilesSelection(dir string) ([]string, error) {
 		return nil, err
 	}
 
+	fmt.Println("\nSelected dot files:")
+	for _, file := range selectedFiles {
+		fmt.Println(file)
+	}
+
 	return selectedFiles, nil
+}
+
+// buildEnvironmentSchema constructs the environment schema from captured data
+func buildEnvironmentSchema(dotfiles []string) *models.EnvironmentSchema {
+	return &models.EnvironmentSchema{
+		Dotfiles: dotfiles,
+		// Future fields will be added here:
+		// Tools: capturedTools,
+		// EnvVariables: capturedEnvVars,
+		// Extensions: capturedExtensions,
+	}
+}
+
+// saveEnvironmentSchema saves the schema to a YAML file
+func saveEnvironmentSchema(schema *models.EnvironmentSchema, filename string) error {
+	yamlData, err := yaml.Marshal(schema)
+	if err != nil {
+		return fmt.Errorf("error marshaling YAML: %v", err)
+	}
+
+	err = os.WriteFile(filename, yamlData, 0644)
+	if err != nil {
+		return fmt.Errorf("error writing YAML file: %v", err)
+	}
+
+	fmt.Printf("\nEnvironment configuration saved to %s\n", filename)
+	return nil
 }
 
 var captureCmd = &cobra.Command{
@@ -96,36 +128,18 @@ var captureCmd = &cobra.Command{
 			return
 		}
 
-		selectedFiles, err := getDotFilesSelection(dir)
+		// Capture different components of the environment
+		dotfiles, err := captureDotFiles(dir)
 		if err != nil {
-			fmt.Printf("Error selecting dot files: %v\n", err)
+			fmt.Printf("Error capturing dot files: %v\n", err)
 			return
 		}
 
-		fmt.Println("\nSelected dot files:")
-		for _, file := range selectedFiles {
-			fmt.Println(file)
-		}
-
-		// Create environment schema with selected dotfiles
-		schema := models.EnvironmentSchema{
-			Dotfiles: selectedFiles,
-		}
-
-		// Marshal to YAML
-		yamlData, err := yaml.Marshal(&schema)
-		if err != nil {
-			fmt.Printf("Error marshaling YAML: %v\n", err)
+		// Build and save schema
+		schema := buildEnvironmentSchema(dotfiles)
+		if err := saveEnvironmentSchema(schema, "environment.yaml"); err != nil {
+			fmt.Printf("Error saving environment configuration: %v\n", err)
 			return
 		}
-
-		// Write to environment.yaml file
-		err = os.WriteFile("environment.yaml", yamlData, 0644)
-		if err != nil {
-			fmt.Printf("Error writing YAML file: %v\n", err)
-			return
-		}
-
-		fmt.Println("\nEnvironment configuration saved to environment.yaml")
 	},
 }

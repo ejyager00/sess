@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ejyager00/sess/internal/models"
+	"github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
 )
 
@@ -104,5 +106,26 @@ var captureCmd = &cobra.Command{
 		for _, file := range selectedFiles {
 			fmt.Println(file)
 		}
+
+		// Create environment schema with selected dotfiles
+		schema := models.EnvironmentSchema{
+			Dotfiles: selectedFiles,
+		}
+
+		// Marshal to YAML
+		yamlData, err := yaml.Marshal(&schema)
+		if err != nil {
+			fmt.Printf("Error marshaling YAML: %v\n", err)
+			return
+		}
+
+		// Write to environment.yaml file
+		err = os.WriteFile("environment.yaml", yamlData, 0644)
+		if err != nil {
+			fmt.Printf("Error writing YAML file: %v\n", err)
+			return
+		}
+
+		fmt.Println("\nEnvironment configuration saved to environment.yaml")
 	},
 }

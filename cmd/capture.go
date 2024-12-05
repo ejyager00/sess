@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -90,13 +91,85 @@ func captureDotFiles(dir string) ([]string, error) {
 	return selectedFiles, nil
 }
 
+// listEnvironmentVariables lists all environment variables and returns them as a map
+func listEnvironmentVariables() map[string]string {
+	envVars := make(map[string]string)
+	for _, env := range os.Environ() {
+		pair := strings.SplitN(env, "=", 2)
+		if len(pair) == 2 {
+			envVars[pair[0]] = pair[1]
+		}
+	}
+	return envVars
+}
+
+// promptForEnvVarSelection prints the list of environment variables and gets user selection
+func promptForEnvVarSelection(envVars map[string]string) (map[string]string, error) {
+	if len(envVars) == 0 {
+		return nil, fmt.Errorf("no environment variables found")
+	}
+
+	// Convert map to sorted slice for consistent display
+	var envVarList []string
+	for key := range envVars {
+		envVarList = append(envVarList, key)
+	}
+	sort.Strings(envVarList)
+
+	fmt.Println("\nFound the following environment variables:")
+	for i, key := range envVarList {
+		fmt.Printf("%d. %s=%s\n", i+1, key, envVars[key])
+	}
+
+	fmt.Print("\nEnter comma-separated numbers of environment variables to include (e.g. 1,3,4): ")
+	reader := bufio.NewReader(os.Stdin)
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		return nil, fmt.Errorf("error reading input: %v", err)
+	}
+
+	// Parse selection
+	selections := strings.Split(strings.TrimSpace(input), ",")
+	selectedVars := make(map[string]string)
+
+	for _, sel := range selections {
+		num, err := strconv.Atoi(strings.TrimSpace(sel))
+		if err != nil {
+			return nil, fmt.Errorf("invalid selection: %s", sel)
+		}
+		if num < 1 || num > len(envVarList) {
+			return nil, fmt.Errorf("selection out of range: %d", num)
+		}
+		key := envVarList[num-1]
+		selectedVars[key] = envVars[key]
+	}
+
+	return selectedVars, nil
+}
+
+// captureEnvVariables handles the environment variable capture workflow
+func captureEnvVariables() (map[string]string, error) {
+	envVars := listEnvironmentVariables()
+	selectedVars, err := promptForEnvVarSelection(envVars)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("\nSelected environment variables:")
+	for key, value := range selectedVars {
+		fmt.Printf("%s=%s\n", key, value)
+	}
+
+	return selectedVars, nil
+}
+
 // buildEnvironmentSchema constructs the environment schema from captured data
-func buildEnvironmentSchema(dotfiles []string) *models.EnvironmentSchema {
+func buildEnvironmentSchema(dotfiles []string, envVars map[string]string) *models.EnvironmentSchema {
 	return &models.EnvironmentSchema{
-		Dotfiles: dotfiles,
+		Dotfiles:     dotfiles,
+		EnvVariables: envVars,
 		// Future fields will be added here:
 		// Tools: capturedTools,
-		// EnvVariables: capturedEnvVars,
 		// Extensions: capturedExtensions,
 	}
 }
@@ -135,8 +208,14 @@ var captureCmd = &cobra.Command{
 			return
 		}
 
+		envVars, err := captureEnvVariables()
+		if err != nil {
+			fmt.Printf("Error capturing environment variables: %v\n", err)
+			return
+		}
+
 		// Build and save schema
-		schema := buildEnvironmentSchema(dotfiles)
+		schema := buildEnvironmentSchema(dotfiles, envVars)
 		if err := saveEnvironmentSchema(schema, "environment.yaml"); err != nil {
 			fmt.Printf("Error saving environment configuration: %v\n", err)
 			return

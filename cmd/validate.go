@@ -93,15 +93,20 @@ func validateDotfiles(dotfiles []string) error {
 	return nil
 }
 
-func validateExtensions(extensions []models.Extension) error {
-	// Get installed VS Code extensions
+type extensionValidator interface {
+	getInstalledExtensions() (map[string]bool, error)
+	getName() string
+}
+
+type vsCodeValidator struct{}
+
+func (v vsCodeValidator) getInstalledExtensions() (map[string]bool, error) {
 	cmd := exec.Command("codium", "--list-extensions")
 	output, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("error getting VS Code extensions: %v", err)
+		return nil, fmt.Errorf("error getting VS Code extensions: %v", err)
 	}
 
-	// Parse installed extensions into a map for easy lookup
 	installedExtensions := make(map[string]bool)
 	for _, ext := range strings.Split(string(output), "\n") {
 		ext = strings.TrimSpace(ext)
@@ -109,18 +114,44 @@ func validateExtensions(extensions []models.Extension) error {
 			installedExtensions[strings.ToLower(ext)] = true
 		}
 	}
+	return installedExtensions, nil
+}
 
-	// Check each required extension
+func (v vsCodeValidator) getName() string {
+	return "vscode"
+}
+
+func validateExtensions(extensions []models.Extension) error {
+	// Map of supported IDE validators
+	validators := map[string]extensionValidator{
+		"vscode": vsCodeValidator{},
+	}
+
+	// Group extensions by IDE
+	extensionsByIde := make(map[string][]models.Extension)
 	for _, extension := range extensions {
-		if extension.Ide != "vscode" {
-			fmt.Printf("Skipping extension %s - only VS Code extensions supported currently\n", extension.Id)
+		extensionsByIde[extension.Ide] = append(extensionsByIde[extension.Ide], extension)
+	}
+
+	// Validate extensions for each IDE
+	for ide, exts := range extensionsByIde {
+		validator, supported := validators[ide]
+		if !supported {
+			fmt.Printf("Skipping extensions for %s - IDE not supported currently\n", ide)
 			continue
 		}
 
-		if installedExtensions[strings.ToLower(extension.Id)] {
-			fmt.Printf("Extension %s is installed\n", extension.Id)
-		} else {
-			fmt.Printf("Extension %s is not installed\n", extension.Id)
+		installedExtensions, err := validator.getInstalledExtensions()
+		if err != nil {
+			return err
+		}
+
+		for _, extension := range exts {
+			if installedExtensions[strings.ToLower(extension.Id)] {
+				fmt.Printf("Extension %s is installed\n", extension.Id)
+			} else {
+				fmt.Printf("Extension %s is not installed\n", extension.Id)
+			}
 		}
 	}
 	return nil
